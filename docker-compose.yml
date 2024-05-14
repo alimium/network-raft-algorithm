@@ -1,0 +1,35 @@
+version: '3'
+services:
+  log-database:
+    image: redis/redis-stack-server:latest
+    ports:
+      - 6379:6379
+    restart: on-failure:1
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      timeout: 30s
+      retries: 1
+    volumes:
+      - redis_data:/data
+    networks:
+      - raft-network
+
+  raft-node-cluster:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 50031-50035:50031
+    deploy:
+      replicas: 5
+    depends_on:
+      - log-database
+    networks:
+      - raft-network
+
+networks:
+  raft-network:
+
+volumes:
+  redis_data:
+    
