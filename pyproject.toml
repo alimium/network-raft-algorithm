@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "raft-consensus"
+version = "0.1.0"
+description = "An implementation of the raft consensus algorithm in python."
+authors = ["Ali Mehrabi <alimehrabi002@gmail.com>", "Raha Gharedaghi <>"]
+readme = "README.md"
+packages = [{include = "raft-consensus"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-dotenv = "^1.0.0"
+grpcio = "^1.63.0"
+grpcio-tools = "^1.63.0"
+grpcio-reflection = "^1.63.0"
+protobuf = "^5.26.1"
+redis = {version="^5.0.4", extras=["hiredis"]}
+redis-om = "^0.3.0"
+
+[tool.poetry.group.dev.dependencies]
+grpcio-tools = "^1.63.0"
+
+[tool.poetry.scripts]
+run-grpc-server = "raft_consensus.__main__:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
