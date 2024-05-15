@@ -1,4 +1,5 @@
 ARG WHEEL_VER=0.41.0
+ARG GRPC_MAX_WORKERS="50"
 
 
 FROM python:3.11.7 as base
@@ -31,6 +32,7 @@ FROM runtime_base as runtime
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
 ENV PATH=/app/.venv/bin:$PATH
+ENV GRPC_MAX_WORKERS=${GRPC_MAX_WORKERS}
 COPY --from=build /app/.venv /app/.venv
 COPY raft_consensus /app/raft_consensus
 CMD ["python", "-m", "raft_consensus"]

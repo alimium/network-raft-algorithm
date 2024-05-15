@@ -1,4 +1,3 @@
-version: '3'
 services:
   log-database:
     image: redis/redis-stack-server:latest
@@ -14,16 +13,59 @@ services:
     networks:
       - raft-network
 
-  raft-node-cluster:
+  raft-node-0:
     build: 
       context: .
       dockerfile: Dockerfile
     ports:
-      - 50031-50035:50031
-    deploy:
-      replicas: 5
+      - 50031:50031
     depends_on:
       - log-database
+    environment:
+      - GRPC_PORT=50031
+      - GRPC_MAX_WORKERS=50
+    networks:
+      - raft-network
+
+  raft-node-1:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 50041:50041
+    depends_on:
+      - log-database
+    environment:
+      - GRPC_PORT=50041
+      - GRPC_MAX_WORKERS=50
+    networks:
+      - raft-network
+
+  raft-node-2:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 50051:50051
+    depends_on:
+      - log-database
+    environment:
+      - GRPC_PORT=50051
+      - GRPC_MAX_WORKERS=50
+    networks:
+      - raft-network
+
+  raft-node-3:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 50061:50061
+    depends_on:
+      - log-database
+    environment:
+      - GRPC_PORT=50061
+      - GRPC_MAX_WORKERS=50
     networks:
       - raft-network
 

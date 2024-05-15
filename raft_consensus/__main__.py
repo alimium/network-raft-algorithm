@@ -2,6 +2,8 @@ import logging
 import argparse
 from dotenv import load_dotenv
 
+from .raft_node_server import serve
+
 
 def main():
     parser = argparse.ArgumentParser(description="Raft Consensus Algorithm")
@@ -20,10 +22,7 @@ def main():
 
     load_dotenv()
 
-    # simulating server behaviour
-    logging.info("starting server...")
-    logging.info("server started on port 500XX")
-    # serve()
+    serve()
 
 
 if __name__ == "__main__":
