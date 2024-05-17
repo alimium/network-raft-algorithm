@@ -15,18 +15,6 @@ import random
 
 #TODO: intergeate redis 
 
-class RaftNodeServicerImpl(RaftNodeServicer):
-    def __init__(self, redis_client: RedisClient) -> None:
-        self._redis_client = redis_client
-
-    def RequestVote(self, request: RequestVoteRequest, context) -> RequestVoteResponse:
-        pass
-
-    def AppendEntries(
-        self, request: AppendEntriesRequest, context
-    ) -> AppendEntriesResponse:
-        pass
-
 # Data class representing a log entry in the Raft algorithm
 @dataclass
 class LogEntry:
@@ -100,13 +88,17 @@ class RaftNodeServicerImpl(RaftNodeServicer):
 
         self.reset_election_timeout()  # Reset the election timeout
 
+        last_log = self.db_client.get_log(self.node_id)
+        last_log_index = last_log.index if last_log else -1
+        last_log_term = last_log.term if last_log else 0
+
         # Send RequestVote RPCs to all peers
         for peer in self.peers:
             request = RequestVoteRequest(
                 term=self.current_term,
                 candidate_id=self.node_id,
-                last_log_index=len(self.log) - 1,
-                last_log_term=self.log[-1].term if self.log else 0
+                last_log_index=last_log_index,
+                last_log_term=last_log_term
             )
             threading.Thread(target=self.send_request_vote, args=(peer, request)).start()
 
@@ -213,18 +205,20 @@ class RaftNodeServicerImpl(RaftNodeServicer):
         self.reset_election_timeout()  # Reset election timeout
 
         # Validate the previous log index and term
-        if request.prev_log_index >= 0 and (len(self.log) <= request.prev_log_index or self.log[request.prev_log_index].term != request.prev_log_term):
+        last_log = self.db_client.get_log(self.node_id)
+        if request.prev_log_index >= 0 and (last_log is None or last_log.index < request.prev_log_index or last_log.term != request.prev_log_term):
             return AppendEntriesResponse(term=self.current_term, success=False)
 
         # Append any new entries not already in the log
         for i, entry in enumerate(request.entries):
-            if len(self.log) > request.prev_log_index + 1 + i:
-                if self.log[request.prev_log_index + 1 + i].term != entry.term:
-                    self.log = self.log[:request.prev_log_index + 1 + i]  # Delete conflicting entry
-            self.log.append(entry)  # Append new entry
+            existing_entry = self.db_client.get_log(self.node_id)
+            if existing_entry and existing_entry.index == request.prev_log_index + 1 + i and existing_entry.term != entry.term:
+                self.db_client.client.ltrim(f"raft:logs:{self.node_id}", 0, request.prev_log_index + i)
+            self.db_client.append_log(self.node_id, entry.term, request.prev_log_index + 1 + i, entry.command)
 
         # Update commit index if leader_commit is greater
         if request.leader_commit > self.commit_index:
-            self.commit_index = min(request.leader_commit, len(self.log) - 1)
+            self.commit_index = min(request.leader_commit, self.db_client.get_log(self.node_id).index)
+
 
         return AppendEntriesResponse(term=self.current_term, success=True)
