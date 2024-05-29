@@ -1,45 +1,56 @@
+import time
+import logging
 import redis
 import redis_om as rom
 
-@dataclass
+
 class LogEntry(rom.HashModel):
     term: int
     index: int  # Added index field
     command: str
-    pk: Optional[str] = None
 
     class Meta:
         global_key_prefix = "raft"
         model_key_prefix: str = "logs"
         index_name = "log_entry"
 
-    def save(self):
-        if not self.pk:
-            self.pk = f"{self.term}:{self.index}"
-        client = redis.StrictRedis(host="localhost", port=6379, db=0)
-        client.hset(self.pk, mapping={"term": self.term, "index": self.index, "command": self.command})
-        client.save()
-
-    @classmethod
-    def get(cls, pk: str):
-        client = redis.StrictRedis(host="localhost", port=6379, db=0)
-        data = client.hgetall(pk)
-        if not data:
-            return None
-        return cls(term=int(data[b'term']), index=int(data[b'index']), command=data[b'command'].decode('utf-8'), pk=pk)
-    
 
 class RedisClient:
     def __init__(self) -> None:
-        self.client = redis.StrictRedis(host="localhost", port=6379, db=0)
+        self.pool = redis.BlockingConnectionPool(
+            timeout=None,
+            host="log-database",
+            port=6379,
+            username="",
+            password="",
+        )
 
-    def append_log(self, node: int, term: int, index: int, command: str):
+    def get_connection(self):
+        r = redis.StrictRedis(connection_pool=self.pool)
+        retry = 0
+        if not r.ping() and retry < 10:
+            logging.error(
+                f"Redis Server is not running. Attempting to reconnect {retry+1}..."
+            )
+            retry += 1
+            time.sleep(1)
+            r = redis.StrictRedis(connection_pool=self.pool)
+        if retry == 10:
+            raise redis.exceptions.ConnectionError("Redis Server is not running.")
+
+        return r
+
+    def append_log(self, node: str, term: int, index: int, command: str):
+        r = self.get_connection()
         entry = LogEntry(term=term, index=index, command=command)
+        entry._meta.database = r
         entry.save()
-        self.client.lpush(f"raft:logs:{node}", entry.pk)
-        self.client.save()
+        r.lpush(f"raft:logs:{node}", entry.pk)
+        r.save()
 
-    def get_log(self, node: int):
-        entry_pk = self.client.lindex(f"raft:logs:{node}", 0)
+    def get_log(self, node: str):
+        r = self.get_connection()
+        entry_pk = r.lindex(f"raft:logs:{node}", 0)
+        if entry_pk is None:
+            return None
         return LogEntry.get(entry_pk)
-

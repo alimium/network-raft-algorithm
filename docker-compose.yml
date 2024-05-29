@@ -7,7 +7,7 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       timeout: 30s
-      retries: 1
+      retries: 2
     volumes:
       - redis_data:/data
     networks:
@@ -24,6 +24,7 @@ services:
     environment:
       - GRPC_PORT=50031
       - GRPC_MAX_WORKERS=50
+      - RAFT_NODES=50031,50041,50051,50061
     networks:
       - raft-network
 
@@ -38,6 +39,7 @@ services:
     environment:
       - GRPC_PORT=50041
       - GRPC_MAX_WORKERS=50
+      - RAFT_NODES=50031,50041,50051,50061
     networks:
       - raft-network
 
@@ -52,6 +54,7 @@ services:
     environment:
       - GRPC_PORT=50051
       - GRPC_MAX_WORKERS=50
+      - RAFT_NODES=50031,50041,50051,50061
     networks:
       - raft-network
 
@@ -66,11 +69,13 @@ services:
     environment:
       - GRPC_PORT=50061
       - GRPC_MAX_WORKERS=50
+      - RAFT_NODES=50031,50041,50051,50061
     networks:
       - raft-network
 
 networks:
   raft-network:
+    
 
 volumes:
   redis_data:

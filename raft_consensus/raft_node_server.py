@@ -27,9 +27,13 @@ def serve():
         )
         max_workers = 10
 
-    redis_client = RedisClient()
-    raft_node_servicer = RaftNodeServicerImpl(redis_client)
+    raft_nodes = os.getenv("RAFT_NODES")
+    if raft_nodes is None:
+        sys.exit("RAFT_NODES environment variable is not set")
+    raft_nodes = [node for node in raft_nodes.split(",") if node != port]
 
+    redis_client = RedisClient()
+    raft_node_servicer = RaftNodeServicerImpl(port, raft_nodes, redis_client)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=int(max_workers)))
     raft_node_pb2_grpc.add_RaftNodeServicer_to_server(raft_node_servicer, server)
     SERVICE_NAMES = (
@@ -37,7 +41,10 @@ def serve():
         reflection.SERVICE_NAME,
     )
     reflection.enable_server_reflection(SERVICE_NAMES, server)
-    server.add_insecure_port("[::]:" + port)
+    no = (int(port) % 50031) / 10
+    no = int(no)
+    server.add_insecure_port(f"raft-node-{no}:" + port)
     server.start()
     logging.info("Server Started, listening on port %s", port)
+    raft_node_servicer.reset_election_timeout()
     server.wait_for_termination()

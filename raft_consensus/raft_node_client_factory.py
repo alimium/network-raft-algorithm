@@ -5,8 +5,15 @@ import grpc
 from .grpc_types.raft_node_pb2_grpc import RaftNodeStub
 
 
-def connectoin_factory(nodes: list):
+def connectoin_factory(nodes: list) -> dict[str, RaftNodeStub]:
     connections = {}
     for node in nodes:
-        connections[node] = RaftNodeStub(grpc.insecure_channel("localhost:" + node))
+        no = (int(node) % 50031) / 10
+        no = int(no)
+        stub = RaftNodeStub(
+            grpc.insecure_channel(
+                f"raft-node-{no}:" + node, options=(("grpc.enable_http_proxy", 0),)
+            )
+        )
+        connections[node] = stub
     return connections

@@ -14,7 +14,7 @@ grpcio-tools = "^1.63.0"
 grpcio-reflection = "^1.63.0"
 protobuf = "^5.26.1"
 redis = {version="^5.0.4", extras=["hiredis"]}
-redis-om = "^0.3.0"
+redis-om = "^0.3.1"
 
 [tool.poetry.group.dev.dependencies]
 grpcio-tools = "^1.63.0"
